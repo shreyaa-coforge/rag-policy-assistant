@@ -25,3 +25,7 @@ This is a training lab: build a RAG system over the policy docs in `docs/`.
 
 ## Workflow
 - Work one step at a time. Do not build ahead.
+
+- Follow TDD. For new behavior: write the test first, run it and show it
+  fails, then implement the minimum code to pass, then rerun. Unit tests
+  must not call the OpenAI API; mock the client instead.
