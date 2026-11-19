@@ -1,9 +1,8 @@
-from itertools import pairwise
 from pathlib import Path
 
 import pytest
 
-from chunker import chunk_documents, count_tokens, get_section_code, last_unit, split_blocks
+from chunker import chunk_documents, count_tokens
 
 DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
 
@@ -28,7 +27,6 @@ Standalone body text.
 
 @pytest.fixture(scope="module")
 def real_chunks():
-    """Chunk the real policy documents once for all tests in this file."""
     return chunk_documents(DOCS_DIR)
 
 
@@ -37,7 +35,7 @@ def write_doc(folder, name, text):
 
 
 def body(chunk):
-    """Return the chunk text without its first line (the contextual header)."""
+    # Everything after the first line, which is the contextual header
     return chunk["text"].split("\n", 1)[1]
 
 
@@ -47,6 +45,38 @@ def body(chunk):
 def test_every_real_chunk_is_at_most_200_tokens(real_chunks):
     for chunk in real_chunks:
         assert count_tokens(chunk["text"]) <= 200, chunk["metadata"]["chunk_id"]
+
+
+# --- Splitting between whole blocks ---
+
+
+def test_long_section_is_split_only_between_whole_blocks(tmp_path):
+    paragraphs = [
+        f"Paragraph {i} says employees must follow this rule carefully every day." * 4
+        for i in range(8)
+    ]
+    write_doc(
+        tmp_path, "test.md", "# Test Policy\n\n## T-3 Long Rule\n\n" + "\n\n".join(paragraphs)
+    )
+
+    chunks = chunk_documents(tmp_path)
+
+    assert len(chunks) > 1
+    pieces = [block for chunk in chunks for block in body(chunk).split("\n\n")]
+    assert pieces == paragraphs  # Every paragraph whole, in order, exactly once (no overlap)
+
+
+def test_oversized_block_is_kept_whole_with_a_warning(tmp_path, capsys):
+    paragraph = " ".join(f"Rule number {i} applies to all staff." for i in range(60))
+    write_doc(tmp_path, "test.md", f"# Test Policy\n\n## T-4 Huge Rule\n\n{paragraph}\n")
+
+    chunks = chunk_documents(tmp_path)
+
+    assert len(chunks) == 1
+    assert body(chunks[0]) == paragraph
+    warning = capsys.readouterr().out
+    assert "test.md" in warning
+    assert "T-4 Huge Rule" in warning
 
 
 # --- Headings with no body ---
@@ -105,65 +135,19 @@ def test_real_chunks_start_with_contextual_header(real_chunks):
 # --- Section code ---
 
 
-def test_get_section_code():
-    assert get_section_code("EXP-4.2 Daily Meal Allowance") == "EXP-4.2"
+def test_section_code_comes_from_the_heading(tmp_path):
+    write_doc(tmp_path, "test.md", SMALL_DOC)
+    codes = [chunk["metadata"]["section_code"] for chunk in chunk_documents(tmp_path)]
+    assert codes == ["T-1.1", "T-2"]
 
 
-# --- Oversized table ---
-
-
-def test_oversized_table_is_split_by_rows_with_header_in_every_piece(tmp_path):
-    rows = [
-        f"| Item {i} with several descriptive words | Value {i} with more detail |"
-        for i in range(40)
-    ]
-    table = "\n".join(["| Name | Value |", "|---|---|"] + rows)
-    write_doc(tmp_path, "test.md", f"# Test Policy\n\n## T-3 Big Table\n\n{table}\n")
-
-    chunks = chunk_documents(tmp_path)
-
-    assert len(chunks) > 1
-    for chunk in chunks:
-        assert body(chunk).startswith("| Name | Value |\n|---|---|\n")
-        assert count_tokens(chunk["text"]) <= 200
-    # Splitting by rows must not lose any row
-    all_text = "\n".join(chunk["text"] for chunk in chunks)
-    for row in rows:
-        assert row in all_text
-
-
-# --- Overlap ---
-
-
-def test_split_section_piece_2_starts_with_last_unit_of_piece_1(tmp_path):
-    sentences = [
-        f"Sentence number {i} explains one rule for employees in detail." for i in range(40)
-    ]
-    write_doc(
-        tmp_path, "test.md", "# Test Policy\n\n## T-4 Long Rule\n\n" + " ".join(sentences) + "\n"
-    )
-
-    chunks = chunk_documents(tmp_path)
-
-    assert len(chunks) > 1
-    for piece_1, piece_2 in pairwise(chunks):
-        overlap = last_unit(split_blocks(body(piece_1))[-1])
-        assert overlap in sentences  # The overlap is one whole sentence
-        assert body(piece_2).startswith(overlap)
-
-
-def test_real_table_overlap_carries_the_table_header(real_chunks):
-    # EXP-4.2 piece 1 ends with the meal table, so piece 2 starts with its last row
-    pieces = [
-        chunk
+def test_real_section_code(real_chunks):
+    codes = {
+        chunk["metadata"]["section_code"]
         for chunk in real_chunks
-        if chunk["metadata"]["doc_name"] == "expense_reimbursement_policy.md"
-        and chunk["metadata"]["section_code"] == "EXP-4.2"
-    ]
-    assert len(pieces) == 2
-    assert body(pieces[1]).startswith(
-        "| Meal | Daily Limit |\n|---|---|\n| **Total per day** | **$75** |"
-    )
+        if chunk["metadata"]["section"] == "EXP-4.2 Daily Meal Allowance"
+    }
+    assert codes == {"EXP-4.2"}
 
 
 # --- Skipped files ---
