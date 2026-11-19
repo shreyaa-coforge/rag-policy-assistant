@@ -28,16 +28,20 @@ def vector_search(question, k=5):
 
     # Results are already sorted, closest first (a lower distance means more similar)
     hits = []
-    for rank, (text, metadata, distance) in enumerate(zip(documents, metadatas, distances), start=1):
-        hits.append({
-            "text": text,
-            "doc_name": metadata["doc_name"],
-            "section": metadata["section"],
-            "section_code": metadata["section_code"],
-            "chunk_id": metadata["chunk_id"],
-            "distance": distance,
-            "rank": rank,
-        })
+    for rank, (text, metadata, distance) in enumerate(
+        zip(documents, metadatas, distances, strict=True), start=1
+    ):
+        hits.append(
+            {
+                "text": text,
+                "doc_name": metadata["doc_name"],
+                "section": metadata["section"],
+                "section_code": metadata["section_code"],
+                "chunk_id": metadata["chunk_id"],
+                "distance": distance,
+                "rank": rank,
+            }
+        )
     return hits
 
 
@@ -50,5 +54,6 @@ if __name__ == "__main__":
     print(f"Question: {question}\n")
     for hit in vector_search(question):
         preview = hit["text"][:150].replace("\n", " ")  # Keep each result on one line
-        print(f"{hit['rank']}. distance={hit['distance']:.4f} | {hit['doc_name']} | {hit['section_code']}")
+        score = f"{hit['rank']}. distance={hit['distance']:.4f}"
+        print(f"{score} | {hit['doc_name']} | {hit['section_code']}")
         print(f"   {preview}\n")

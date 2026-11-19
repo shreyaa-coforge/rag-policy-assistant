@@ -32,5 +32,5 @@ distances = results["distances"][0]
 
 # Results are already sorted, closest first (a lower distance means more similar)
 print(f"\nQuestion: {question}")
-for rank, (document, distance) in enumerate(zip(documents, distances), start=1):
+for rank, (document, distance) in enumerate(zip(documents, distances, strict=True), start=1):
     print(f"{rank}. distance={distance:.4f} | {document}")

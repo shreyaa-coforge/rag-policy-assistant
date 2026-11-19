@@ -22,6 +22,10 @@ This is a training lab: build a RAG system over the policy docs in `docs/`.
 ## Code style
 - Keep code simple and readable, with short comments.
 - The author must be able to understand and explain every line.
+- Keep code simple and sized to the problem. No speculative features.
+- Comments only where the reason is not obvious from the code.
+  No docstrings on small, self-explanatory functions.
+- Run `ruff format .` and `ruff check .` before every commit.
 
 ## Workflow
 - Work one step at a time. Do not build ahead.

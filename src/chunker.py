@@ -176,15 +176,17 @@ def chunk_documents(docs_dir="docs"):
             header = " > ".join(part for part in parts if part)
 
             for piece in split_section(header, body):
-                chunks.append({
-                    "text": f"{header}\n{piece}",
-                    "metadata": {
-                        "doc_name": path.name,
-                        "section": heading,
-                        "section_code": get_section_code(heading),
-                        "chunk_id": f"{path.stem}-{chunk_number}",
-                    },
-                })
+                chunks.append(
+                    {
+                        "text": f"{header}\n{piece}",
+                        "metadata": {
+                            "doc_name": path.name,
+                            "section": heading,
+                            "section_code": get_section_code(heading),
+                            "chunk_id": f"{path.stem}-{chunk_number}",
+                        },
+                    }
+                )
                 chunk_number += 1
 
     return chunks

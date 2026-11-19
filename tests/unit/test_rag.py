@@ -34,7 +34,9 @@ def mock_client(rag_module, monkeypatch):
     client = MagicMock()
     # Shape the mock like a real response: response.choices[0].message.content
     message = SimpleNamespace(content=FAKE_ANSWER)
-    client.chat.completions.create.return_value = SimpleNamespace(choices=[SimpleNamespace(message=message)])
+    client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[SimpleNamespace(message=message)]
+    )
     monkeypatch.setattr(rag_module, "client", client)
     return client
 
