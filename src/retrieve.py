@@ -1,3 +1,4 @@
+import re
 import sys
 
 import chromadb
@@ -8,10 +9,31 @@ from chunker import MODEL_NAME
 CHROMA_PATH = "./chroma_db"
 COLLECTION_NAME = "policy_chunks"  # Must match the name used in index.py
 
+RRF_K = 60  # Standard constant in reciprocal rank fusion: score = 1 / (RRF_K + rank)
+CANDIDATES = 20  # How many results each search contributes before fusion
+CODE_BONUS = 10  # A matching code like PTO-3.1 outweighs up to 10 matching words
+CODE_PATTERN = re.compile(r"\b[A-Z][A-Z&]*-\d+(?:\.\d+)?\b")  # PTO-3.1, FIN-118, T&E-07
+STOPWORDS = {
+    "a", "an", "and", "are", "can", "do", "does", "for", "how", "i", "in", "is", "many",
+    "much", "my", "of", "on", "or", "say", "the", "to", "what", "when", "with",
+}  # fmt: skip
+
 # Load the model and open the collection once, when this file is imported
 model = SentenceTransformer(MODEL_NAME)
 client = chromadb.PersistentClient(path=CHROMA_PATH)
 collection = client.get_collection(name=COLLECTION_NAME, embedding_function=None)
+
+
+def make_hit(text, metadata, rank, **scores):
+    return {
+        "text": text,
+        "doc_name": metadata["doc_name"],
+        "section": metadata["section"],
+        "section_code": metadata["section_code"],
+        "chunk_id": metadata["chunk_id"],
+        "rank": rank,
+        **scores,
+    }
 
 
 def vector_search(question, k=5):
@@ -21,28 +43,55 @@ def vector_search(question, k=5):
 
     results = collection.query(query_embeddings=[question_embedding], n_results=k)
 
-    # Chroma returns one list per question, so [0] selects our only question
-    documents = results["documents"][0]
-    metadatas = results["metadatas"][0]
-    distances = results["distances"][0]
+    # Chroma returns one list per question, so [0] selects our only question.
+    # Results are already sorted, closest first (a lower distance means more similar).
+    rows = zip(
+        results["documents"][0], results["metadatas"][0], results["distances"][0], strict=True
+    )
+    return [
+        make_hit(text, metadata, rank, distance=distance)
+        for rank, (text, metadata, distance) in enumerate(rows, start=1)
+    ]
 
-    # Results are already sorted, closest first (a lower distance means more similar)
-    hits = []
-    for rank, (text, metadata, distance) in enumerate(
-        zip(documents, metadatas, distances, strict=True), start=1
-    ):
-        hits.append(
-            {
-                "text": text,
-                "doc_name": metadata["doc_name"],
-                "section": metadata["section"],
-                "section_code": metadata["section_code"],
-                "chunk_id": metadata["chunk_id"],
-                "distance": distance,
-                "rank": rank,
-            }
-        )
-    return hits
+
+def keyword_search(question, k=5):
+    """Score chunks by substring matches of the question's words and codes."""
+    words = {word.strip("?.,!:;\"'()") for word in question.lower().split()} - STOPWORDS - {""}
+    codes = CODE_PATTERN.findall(question)
+
+    stored = collection.get(include=["documents", "metadatas"])
+    scored = []
+    for text, metadata in zip(stored["documents"], stored["metadatas"], strict=True):
+        lower_text = text.lower()
+        score = sum(word in lower_text for word in words)
+        score += CODE_BONUS * sum(code in text for code in codes)
+        if score > 0:
+            scored.append((score, text, metadata))
+
+    scored.sort(key=lambda item: item[0], reverse=True)  # Stable: ties keep stored order
+    return [
+        make_hit(text, metadata, rank, score=score)
+        for rank, (score, text, metadata) in enumerate(scored[:k], start=1)
+    ]
+
+
+def rrf_combine(*ranked_lists):
+    """Merge ranked lists: each list adds 1 / (RRF_K + rank) to a chunk's score."""
+    scores, results = {}, {}
+    for ranked in ranked_lists:
+        for rank, result in enumerate(ranked, start=1):
+            chunk_id = result["chunk_id"]
+            scores[chunk_id] = scores.get(chunk_id, 0) + 1 / (RRF_K + rank)
+            results.setdefault(chunk_id, result)
+
+    order = sorted(scores, key=scores.get, reverse=True)
+    return [{**results[chunk_id], "rrf_score": scores[chunk_id]} for chunk_id in order]
+
+
+def hybrid_search(question, k=5):
+    """Fuse the top vector and keyword results with RRF and return the top k."""
+    fused = rrf_combine(vector_search(question, CANDIDATES), keyword_search(question, CANDIDATES))
+    return [{**result, "rank": rank} for rank, result in enumerate(fused[:k], start=1)]
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ FAKE_HITS = [
 @pytest.fixture
 def mock_client(rag_module, monkeypatch):
     """Replace retrieval with fixed hits and the OpenAI client with a mock."""
-    monkeypatch.setattr(rag_module, "vector_search", lambda question, k: FAKE_HITS)
+    monkeypatch.setattr(rag_module, "hybrid_search", lambda question, k: FAKE_HITS)
 
     client = MagicMock()
     # Shape the mock like a real response: response.choices[0].message.content
