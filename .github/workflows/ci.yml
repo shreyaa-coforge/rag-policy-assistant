@@ -31,6 +31,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
       - name: Build the vector index
         run: python src/index.py
 

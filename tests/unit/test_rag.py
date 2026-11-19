@@ -37,7 +37,8 @@ def mock_client(rag_module, monkeypatch):
     client.chat.completions.create.return_value = SimpleNamespace(
         choices=[SimpleNamespace(message=message)]
     )
-    monkeypatch.setattr(rag_module, "client", client)
+    # answer() creates its client with OpenAI(), so make OpenAI() return the mock
+    monkeypatch.setattr(rag_module, "OpenAI", lambda: client)
     return client
 
 

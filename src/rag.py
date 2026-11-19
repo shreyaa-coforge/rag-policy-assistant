@@ -8,9 +8,8 @@ from retrieve import vector_search
 OPENAI_MODEL = "gpt-4o-mini"
 NOT_FOUND_ANSWER = "I don't know based on the provided policies"
 
-# Read OPENAI_API_KEY from the .env file into the environment
+# Read OPENAI_API_KEY from the .env file into the environment (if the file exists)
 load_dotenv()
-client = OpenAI()  # Finds OPENAI_API_KEY in the environment by itself
 
 # The rules the model must follow for every question
 SYSTEM_PROMPT = f"""You answer questions about company policies.
@@ -38,7 +37,9 @@ def answer(question, k=5):
     # Step 1: Find the chunks closest to the question
     hits = vector_search(question, k)
 
-    # Step 2: Ask the model, using only those chunks as context
+    # Step 2: Ask the model, using only those chunks as context.
+    # The client is created here, not at import, so importing rag needs no API key.
+    client = OpenAI()  # Finds OPENAI_API_KEY in the environment by itself
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         temperature=0,  # Always pick the most likely words, so answers are repeatable

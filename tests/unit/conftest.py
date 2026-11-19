@@ -33,10 +33,7 @@ def retrieve_module(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def rag_module(retrieve_module):
-    """Import rag with a fake API key, so the real key is never used."""
-    with pytest.MonkeyPatch.context() as patcher:
-        # load_dotenv() does not overwrite a variable that is already set
-        patcher.setenv("OPENAI_API_KEY", "test-key-not-real")
-        import rag
+    # Importing rag must work without OPENAI_API_KEY (CI runs unit tests without it)
+    import rag
 
-        yield rag
+    return rag
