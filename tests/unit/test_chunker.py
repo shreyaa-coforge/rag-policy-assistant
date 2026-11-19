@@ -1,3 +1,4 @@
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -47,23 +48,74 @@ def test_every_real_chunk_is_at_most_200_tokens(real_chunks):
         assert count_tokens(chunk["text"]) <= 200, chunk["metadata"]["chunk_id"]
 
 
-# --- Splitting between whole blocks ---
+# --- Splitting and overlap ---
+
+
+def sentence(i, j):
+    return f"Paragraph {i} sentence {j} says employees must follow this rule."
+
+
+PARAGRAPHS = [" ".join(sentence(i, j) for j in range(3)) for i in range(8)]
+LONG_DOC = "# Test Policy\n\n## T-3 Long Rule\n\n" + "\n\n".join(PARAGRAPHS) + "\n"
 
 
 def test_long_section_is_split_only_between_whole_blocks(tmp_path):
-    paragraphs = [
-        f"Paragraph {i} says employees must follow this rule carefully every day." * 4
-        for i in range(8)
-    ]
-    write_doc(
-        tmp_path, "test.md", "# Test Policy\n\n## T-3 Long Rule\n\n" + "\n\n".join(paragraphs)
-    )
+    write_doc(tmp_path, "test.md", LONG_DOC)
 
     chunks = chunk_documents(tmp_path)
 
     assert len(chunks) > 1
-    pieces = [block for chunk in chunks for block in body(chunk).split("\n\n")]
-    assert pieces == paragraphs  # Every paragraph whole, in order, exactly once (no overlap)
+    # Drop the overlap (first block) of every later piece; what is left is the whole section
+    blocks = body(chunks[0]).split("\n\n")
+    for chunk in chunks[1:]:
+        blocks += body(chunk).split("\n\n")[1:]
+    assert blocks == PARAGRAPHS
+
+
+def test_split_after_paragraph_repeats_its_last_sentence(tmp_path):
+    write_doc(tmp_path, "test.md", LONG_DOC)
+
+    chunks = chunk_documents(tmp_path)
+
+    assert len(chunks) > 1
+    for previous, current in pairwise(chunks):
+        i = PARAGRAPHS.index(body(previous).split("\n\n")[-1])
+        assert body(current).startswith(sentence(i, 2) + "\n\n")
+
+
+def test_split_after_table_repeats_header_separator_and_last_row(tmp_path):
+    rows = [f"| Item {i} | Value {i} |" for i in range(12)]  # 224 tokens in total, so it splits
+    table = "\n".join(["| Name | Value |", "|---|---|", *rows])
+    closing = " ".join(f"Closing sentence {j} adds more detail about this rule." for j in range(11))
+    intro = "This intro explains the table."
+    write_doc(
+        tmp_path,
+        "test.md",
+        f"# Test Policy\n\n## T-5 Table Rule\n\n{intro}\n\n{table}\n\n{closing}\n",
+    )
+
+    chunks = chunk_documents(tmp_path)
+
+    assert len(chunks) == 2
+    assert body(chunks[0]).endswith(table)
+    assert body(chunks[1]) == f"| Name | Value |\n|---|---|\n| Item 11 | Value 11 |\n\n{closing}"
+
+
+def test_section_that_fits_has_no_overlap(tmp_path):
+    write_doc(tmp_path, "test.md", SMALL_DOC)
+    texts = [chunk["text"] for chunk in chunk_documents(tmp_path)]
+    assert texts == [
+        "Test Policy > T-1 Parent Only > T-1.1 First Child\nChild body text.",
+        "Test Policy > T-2 Standalone\nStandalone body text.",
+    ]
+
+
+def test_no_chunk_body_is_empty_or_only_a_heading(real_chunks):
+    for chunk in real_chunks:
+        lines = chunk["text"].split("\n", 1)
+        assert len(lines) == 2, chunk["metadata"]["chunk_id"]
+        assert lines[1].strip(), chunk["metadata"]["chunk_id"]
+        assert not lines[1].lstrip().startswith("#"), chunk["metadata"]["chunk_id"]
 
 
 def test_oversized_block_is_kept_whole_with_a_warning(tmp_path, capsys):
