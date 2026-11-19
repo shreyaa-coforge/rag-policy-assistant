@@ -26,4 +26,4 @@ def test_recall_at_5(retrieve_module):
 
         print(f"{name} recall@5: {recall:.2f} ({len(EVAL_SET) - len(missed)}/{len(EVAL_SET)})")
         print("  Missed:", *missed or ["none"], sep="\n    - ")
-        assert recall >= 0.6
+        assert recall >= 0.9
