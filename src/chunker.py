@@ -4,7 +4,12 @@
 # - Chunks follow the documents' ## and ### section structure.
 # - Long sections are split only between whole blocks (paragraphs, tables,
 #   lists), so no sentence or table row is ever cut.
-# - Every piece repeats the section header, so no overlap is needed.
+# - Every piece repeats the section header.
+# - Overlap applies only when a section is split: the next piece starts with
+#   the last sentence of a paragraph, or a table's header, separator, and last
+#   row, so nothing is orphaned. Corpus analysis of the 11 split points: overlap
+#   needs 24-38 tokens (median 33), so OVERLAP_TOKENS = 40. The largest later
+#   piece is 134 tokens, and 134 + 40 = 174 stays under the 200-token cap.
 
 import re
 from pathlib import Path
@@ -13,6 +18,7 @@ from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 MAX_TOKENS = 200
+OVERLAP_TOKENS = 40
 SKIP_FILES = {"DATA_QUALITY_ISSUE.md"}
 
 tokenizer = SentenceTransformer(MODEL_NAME).tokenizer
@@ -44,6 +50,13 @@ def split_blocks(body):
     return [block.strip() for block in re.split(r"\n\s*\n", body) if block.strip()]
 
 
+def overlap_for(block):
+    if block.startswith("|"):  # Table: header row, separator row, last row
+        lines = block.splitlines()
+        return "\n".join([*lines[:2], lines[-1]])
+    return re.split(r"(?<=[.!?])\s+", block)[-1]  # Paragraph: last sentence
+
+
 def pack_blocks(header, blocks):
     """Group whole blocks into pieces that fit under the cap together with the header."""
     pieces, current = [], []
@@ -51,7 +64,10 @@ def pack_blocks(header, blocks):
         candidate = "\n\n".join([*current, block])
         if current and count_tokens(f"{header}\n{candidate}") > MAX_TOKENS:
             pieces.append("\n\n".join(current))
-            current = [block]
+            overlap = overlap_for(current[-1])
+            small = count_tokens(overlap) <= OVERLAP_TOKENS
+            fits = count_tokens(f"{header}\n{overlap}\n\n{block}") <= MAX_TOKENS
+            current = [overlap, block] if small and fits else [block]
         else:
             current.append(block)
     pieces.append("\n\n".join(current))
