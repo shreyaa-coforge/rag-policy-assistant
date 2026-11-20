@@ -19,11 +19,16 @@ STOPWORDS = {
     "much", "my", "of", "on", "or", "say", "the", "to", "what", "when", "with",
 }  # fmt: skip
 
-# Load the models and open the collection once, when this file is imported
+# Load the models and connect to the database once, when this file is imported
 model = SentenceTransformer(MODEL_NAME)
 reranker = CrossEncoder(RERANK_MODEL_NAME)
 client = chromadb.PersistentClient(path=CHROMA_PATH)
-collection = client.get_collection(name=COLLECTION_NAME, embedding_function=None)
+
+
+def get_collection():
+    # Look the collection up on every search: index.py deletes and recreates it,
+    # so a handle kept from import time could point at a deleted collection
+    return client.get_collection(name=COLLECTION_NAME, embedding_function=None)
 
 
 def make_hit(text, metadata, rank, **scores):
@@ -43,7 +48,7 @@ def vector_search(question, k=5):
     # Embed the question with the same model used for the chunks
     question_embedding = model.encode(question).tolist()
 
-    results = collection.query(query_embeddings=[question_embedding], n_results=k)
+    results = get_collection().query(query_embeddings=[question_embedding], n_results=k)
 
     # Chroma returns one list per question, so [0] selects our only question.
     # Results are already sorted, closest first (a lower distance means more similar).
@@ -61,7 +66,7 @@ def keyword_search(question, k=5):
     words = {word.strip("?.,!:;\"'()") for word in question.lower().split()} - STOPWORDS - {""}
     codes = CODE_PATTERN.findall(question)
 
-    stored = collection.get(include=["documents", "metadatas"])
+    stored = get_collection().get(include=["documents", "metadatas"])
     scored = []
     for text, metadata in zip(stored["documents"], stored["metadatas"], strict=True):
         lower_text = text.lower()
