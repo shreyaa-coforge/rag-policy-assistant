@@ -1,0 +1,118 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.16, pytest-9.2.0, pluggy-1.7.0 -- /Users/Shreyaa.L/Documents/Assignments/rag-policy-assistant/.venv/bin/python3.12
+cachedir: .pytest_cache
+rootdir: /Users/Shreyaa.L/Documents/Assignments/rag-policy-assistant
+configfile: pyproject.toml
+plugins: anyio-4.16.0
+collecting ... collected 14 items
+
+tests/eval/test_answer_eval.py::test_answer[What does section PTO-3.1 say?] Total chunks stored: 104
+
+Metadata: {'doc_name': 'expense_reimbursement_policy.md', 'section': 'EXP-1 Purpose and Scope', 'section_code': 'EXP-1', 'chunk_id': 'expense_reimbursement_policy-0'}
+Helix Dynamics Expense Reimbursement Policy > EXP-1 Purpose and Scope
+This policy explains which business expenses Helix Dynamics will reimburse, the limits that apply, and how employees should submit expenses for repayment. It applies to all full-time and part-time employees who spend their own money, or use a company corporate card, on approved company business. Contractors should follow the expense terms in their individual contracts, and interns should follow this policy unless their offer letter says otherwise.
+
+The goal of this policy is to make reimbursement fair, fast, and consistent across every team. It also helps the company meet its tax and audit obligations. Where this policy sets a limit, the limit is a maximum, not a target. Employees are expected to spend less when a reasonable lower-cost option is available.
+
+Metadata: {'doc_name': 'pto_policy.md', 'section': 'PTO-1 Purpose and Scope', 'section_code': 'PTO-1', 'chunk_id': 'pto_policy-0'}
+Helix Dynamics Paid Time Off (PTO) Policy > PTO-1 Purpose and Scope
+This policy describes how employees at Helix Dynamics earn, request, and use paid time off, sick leave, company holidays, and other types of leave. Helix Dynamics believes that regular time away from work helps employees stay healthy and do their best work, and managers are expected to encourage their teams to use their time off.
+PASSED
+tests/eval/test_answer_eval.py::test_answer[What is Form FIN-118 used for?] PASSED
+tests/eval/test_answer_eval.py::test_answer[What is the lodging limit for international cities?] PASSED
+tests/eval/test_answer_eval.py::test_answer[How long do I have to submit an expense report?] XFAIL
+tests/eval/test_answer_eval.py::test_answer[How many PTO days do new employees get?] FAILED
+tests/eval/test_answer_eval.py::test_answer[What is the daily meal allowance when traveling for business?] XFAIL
+tests/eval/test_answer_eval.py::test_answer[How many days a week can I work from home?] PASSED
+tests/eval/test_answer_eval.py::test_answer[How much is the home office stipend?] PASSED
+tests/eval/test_answer_eval.py::test_answer[What are the core hours for remote employees?] PASSED
+tests/eval/test_answer_eval.py::test_answer[How much paid parental leave does a birth parent get?] PASSED
+tests/eval/test_answer_eval.py::test_answer[What is the company's stock option policy?] PASSED
+tests/eval/test_answer_eval.py::test_answer[What is the 401k matching policy?] PASSED
+Answer accuracy: 9/12 passed
+
+- Question: How long do I have to submit an expense report?
+  Expected: ['30 days']
+  Answer:   I don't know based on the provided policies.
+
+- Question: How many PTO days do new employees get?
+  Expected: ['15 days']
+  Answer:   I don't know based on the provided policies.
+
+- Question: What is the daily meal allowance when traveling for business?
+  Expected: ['$75']
+  Answer:   I don't know based on the provided policies.
+
+tests/eval/test_retrieval_eval.py::test_recall_at_5 
+vector_search recall@5
+  overall    0.90 (9/10)
+  code       0.50 (1/2)
+  direct     1.00 (8/8)
+  Missed:
+    - [code] What does section PTO-3.1 say?
+hybrid_search recall@5
+  overall    1.00 (10/10)
+  code       1.00 (2/2)
+  direct     1.00 (8/8)
+  Missed:
+    - none
+PASSED
+tests/eval/test_retrieval_eval.py::test_rerank_recall_at_1_and_3 
+hybrid_search recall@1
+  overall    0.70 (7/10)
+  code       1.00 (2/2)
+  direct     0.62 (5/8)
+  Missed:
+    - [direct] How long do I have to submit an expense report?
+    - [direct] How many PTO days do new employees get?
+    - [direct] How many days a week can I work from home?
+retrieve (rerank) recall@1
+  overall    0.50 (5/10)
+  code       0.00 (0/2)
+  direct     0.62 (5/8)
+  Missed:
+    - [code] What does section PTO-3.1 say?
+    - [code] What is Form FIN-118 used for?
+    - [direct] What is the lodging limit for international cities?
+    - [direct] How long do I have to submit an expense report?
+    - [direct] How many PTO days do new employees get?
+hybrid_search recall@3
+  overall    1.00 (10/10)
+  code       1.00 (2/2)
+  direct     1.00 (8/8)
+  Missed:
+    - none
+retrieve (rerank) recall@3
+  overall    0.90 (9/10)
+  code       1.00 (2/2)
+  direct     0.88 (7/8)
+  Missed:
+    - [direct] How many PTO days do new employees get?
+PASSED
+
+=================================== FAILURES ===================================
+_____________ test_answer[How many PTO days do new employees get?] _____________
+
+rag_module = <module 'rag' from '/Users/Shreyaa.L/Documents/Assignments/rag-policy-assistant/src/rag.py'>
+case = {'type': 'direct', 'question': 'How many PTO days do new employees get?', 'expected_doc': 'pto_policy.md', 'expected_section_code': 'PTO-2.1', ...}
+
+    @pytest.mark.parametrize("case", CASES)
+    def test_answer(rag_module, case):
+        answer = rag_module.answer(case["question"])["answer"]
+    
+        if case["type"] == "out_of_scope":
+            expected = ["I don't know"]
+        else:
+            expected = case["expected_keywords"]
+        missing = [keyword for keyword in expected if keyword.lower() not in answer.lower()]
+    
+        if missing:
+            failures.append((case["question"], expected, answer))
+>       assert not missing, f"Missing {missing} in answer: {answer}"
+E       AssertionError: Missing ['15 days'] in answer: I don't know based on the provided policies.
+E       assert not ['15 days']
+
+tests/eval/test_answer_eval.py:54: AssertionError
+=========================== short test summary info ============================
+FAILED tests/eval/test_answer_eval.py::test_answer[How many PTO days do new employees get?]
+=================== 1 failed, 11 passed, 2 xfailed in 22.36s ===================

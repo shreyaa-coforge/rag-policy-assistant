@@ -68,5 +68,13 @@
     "expected_doc": "pto_policy.md",
     "expected_section_code": "PTO-7.5",
     "expected_keywords": ["16 weeks"]
+  },
+  {
+    "type": "out_of_scope",
+    "question": "What is the company's stock option policy?"
+  },
+  {
+    "type": "out_of_scope",
+    "question": "What is the 401k matching policy?"
   }
 ]
