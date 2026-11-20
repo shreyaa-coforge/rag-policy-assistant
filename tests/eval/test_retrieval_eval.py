@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 EVAL_SET = json.loads((Path(__file__).parent / "eval_set.json").read_text(encoding="utf-8"))
+TYPES = sorted({case["type"] for case in EVAL_SET})
 
 
 def found(search_fn, case, k):
@@ -17,13 +18,23 @@ def recall_at_k(search_fn, k=5):
     return sum(found(search_fn, case, k) for case in EVAL_SET) / len(EVAL_SET)
 
 
+def report(label, hits, total):
+    print(f"  {label:<10} recall@5: {hits / total:.2f} ({hits}/{total})")
+
+
 def test_recall_at_5(retrieve_module):
     print()
     for name in ("vector_search", "hybrid_search"):
         search = getattr(retrieve_module, name)
-        recall = recall_at_k(search, k=5)
-        missed = [case["question"] for case in EVAL_SET if not found(search, case, 5)]
+        hit_by_case = [(case, found(search, case, 5)) for case in EVAL_SET]
+        missed = [case for case, hit in hit_by_case if not hit]
 
-        print(f"{name} recall@5: {recall:.2f} ({len(EVAL_SET) - len(missed)}/{len(EVAL_SET)})")
-        print("  Missed:", *missed or ["none"], sep="\n    - ")
-        assert recall >= 0.9
+        print(name)
+        report("overall", len(EVAL_SET) - len(missed), len(EVAL_SET))
+        for kind in TYPES:
+            of_type = [hit for case, hit in hit_by_case if case["type"] == kind]
+            report(kind, sum(of_type), len(of_type))
+        missed_lines = [f"[{case['type']}] {case['question']}" for case in missed]
+        print("  Missed:", *missed_lines or ["none"], sep="\n    - ")
+
+        assert recall_at_k(search, k=5) >= 0.9
