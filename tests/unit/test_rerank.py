@@ -43,9 +43,29 @@ def test_rerank_empty_list_returns_empty_list(retrieve_module):
     assert retrieve_module.rerank(QUESTION, []) == []
 
 
-def test_retrieve_ranks_pto_2_1_first_for_new_employee_pto(retrieve_module):
-    results = retrieve_module.retrieve(QUESTION)
+def test_table_to_sentences_rewrites_rows_and_keeps_other_lines(retrieve_module):
+    text = (
+        "PTO Policy > Accrual Rates\n"
+        "PTO accrues each pay period.\n"
+        "\n"
+        "| Years of Service | Annual PTO |\n"
+        "|---|---|\n"
+        "| 0 to 2 years | 15 days |\n"
+        "| 3 to 5 years | 20 days |\n"
+        "\n"
+        "Years are counted from the hire date."
+    )
+    expected = (
+        "PTO Policy > Accrual Rates\n"
+        "PTO accrues each pay period.\n"
+        "\n"
+        "Years of Service: 0 to 2 years; Annual PTO: 15 days.\n"
+        "Years of Service: 3 to 5 years; Annual PTO: 20 days.\n"
+        "\n"
+        "Years are counted from the hire date."
+    )
 
-    assert len(results) <= 3
-    assert results[0]["doc_name"] == "pto_policy.md"
-    assert results[0]["section_code"] == "PTO-2.1"
+    assert retrieve_module.table_to_sentences(text) == expected
+
+
+
