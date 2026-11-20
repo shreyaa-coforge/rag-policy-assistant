@@ -1,59 +1,69 @@
 [
   {
+    "type": "code",
     "question": "What does section PTO-3.1 say?",
     "expected_doc": "pto_policy.md",
     "expected_section_code": "PTO-3.1",
     "expected_keywords": ["5 days"]
   },
   {
+    "type": "code",
     "question": "What is Form FIN-118 used for?",
     "expected_doc": "expense_reimbursement_policy.md",
     "expected_section_code": "EXP-5",
     "expected_keywords": ["Missing Receipt Declaration"]
   },
   {
+    "type": "direct",
     "question": "What is the lodging limit for international cities?",
     "expected_doc": "expense_reimbursement_policy.md",
     "expected_section_code": "EXP-3.2",
     "expected_keywords": ["$300"]
   },
   {
+    "type": "direct",
     "question": "How long do I have to submit an expense report?",
     "expected_doc": "expense_reimbursement_policy.md",
     "expected_section_code": "EXP-6.1",
     "expected_keywords": ["30 days"]
   },
   {
+    "type": "direct",
     "question": "How many PTO days do new employees get?",
     "expected_doc": "pto_policy.md",
     "expected_section_code": "PTO-2.1",
     "expected_keywords": ["15 days"]
   },
   {
+    "type": "direct",
     "question": "What is the daily meal allowance when traveling for business?",
     "expected_doc": "expense_reimbursement_policy.md",
     "expected_section_code": "EXP-4.2",
     "expected_keywords": ["$75"]
   },
   {
+    "type": "direct",
     "question": "How many days a week can I work from home?",
     "expected_doc": "remote_work_policy.md",
     "expected_section_code": "RW-4.2",
     "expected_keywords": ["3 days"]
   },
   {
+    "type": "direct",
     "question": "How much is the home office stipend?",
     "expected_doc": "remote_work_policy.md",
     "expected_section_code": "RW-6.2",
     "expected_keywords": ["$500"]
   },
   {
+    "type": "direct",
     "question": "What are the core hours for remote employees?",
     "expected_doc": "remote_work_policy.md",
     "expected_section_code": "RW-8.1",
     "expected_keywords": ["10:00 AM", "3:00 PM"]
   },
   {
+    "type": "direct",
     "question": "How much paid parental leave does a birth parent get?",
     "expected_doc": "pto_policy.md",
     "expected_section_code": "PTO-7.5",

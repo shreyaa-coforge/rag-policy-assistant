@@ -36,9 +36,6 @@ jobs:
           ruff check .
           ruff format --check .
 
-      - name: Build the vector index
-        run: python src/index.py
-
       - name: Run tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -3,7 +3,7 @@ import sys
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from retrieve import hybrid_search
+from retrieve import retrieve
 
 OPENAI_MODEL = "gpt-4o-mini"
 NOT_FOUND_ANSWER = "I don't know based on the provided policies"
@@ -32,10 +32,10 @@ def build_prompt(question, hits):
     return f"Context:\n\n{context}\n\nQuestion: {question}"
 
 
-def answer(question, k=5):
+def answer(question):
     """Retrieve relevant chunks, ask the model, and return the answer with sources."""
-    # Step 1: Find the most relevant chunks (vector + keyword search, fused)
-    hits = hybrid_search(question, k)
+    # Step 1: Find the 3 most relevant chunks (hybrid search top 10, then reranked)
+    hits = retrieve(question)
 
     # Step 2: Ask the model, using only those chunks as context.
     # The client is created here, not at import, so importing rag needs no API key.
