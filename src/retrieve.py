@@ -2,10 +2,11 @@ import re
 import sys
 
 import chromadb
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from chunker import MODEL_NAME
 
+RERANK_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 CHROMA_PATH = "./chroma_db"
 COLLECTION_NAME = "policy_chunks"  # Must match the name used in index.py
 
@@ -18,8 +19,9 @@ STOPWORDS = {
     "much", "my", "of", "on", "or", "say", "the", "to", "what", "when", "with",
 }  # fmt: skip
 
-# Load the model and open the collection once, when this file is imported
+# Load the models and open the collection once, when this file is imported
 model = SentenceTransformer(MODEL_NAME)
+reranker = CrossEncoder(RERANK_MODEL_NAME)
 client = chromadb.PersistentClient(path=CHROMA_PATH)
 collection = client.get_collection(name=COLLECTION_NAME, embedding_function=None)
 
@@ -92,6 +94,23 @@ def hybrid_search(question, k=5):
     """Fuse the top vector and keyword results with RRF and return the top k."""
     fused = rrf_combine(vector_search(question, CANDIDATES), keyword_search(question, CANDIDATES))
     return [{**result, "rank": rank} for rank, result in enumerate(fused[:k], start=1)]
+
+
+def rerank(question, chunks, top_n=3):
+    """Score each (question, chunk) pair with the cross-encoder and keep the best top_n."""
+    if not chunks:
+        return []
+    # The cross-encoder reads question and chunk together; a higher score means more relevant
+    scores = reranker.predict([(question, chunk["text"]) for chunk in chunks])
+    scored = [
+        {**chunk, "rerank_score": float(score)} for chunk, score in zip(chunks, scores, strict=True)
+    ]
+    scored.sort(key=lambda chunk: chunk["rerank_score"], reverse=True)
+    return scored[:top_n]
+
+
+def retrieve(question, candidates=10, top_n=3):
+    return rerank(question, hybrid_search(question, k=candidates), top_n)
 
 
 if __name__ == "__main__":
