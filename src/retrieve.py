@@ -96,32 +96,12 @@ def hybrid_search(question, k=5):
     return [{**result, "rank": rank} for rank, result in enumerate(fused[:k], start=1)]
 
 
-def table_to_sentences(text):
-    """Rewrite markdown table rows as "Header: cell; Header: cell." sentences."""
-    lines, headers = [], None
-    for line in text.splitlines():
-        if not line.startswith("|"):
-            headers = None  # Any non-table line ends the current table
-            lines.append(line)
-            continue
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if headers is None:
-            headers = cells  # The first row of a table is its header, not a sentence
-        elif set(line.strip()) - set("|-: "):  # Skip the |---|---| separator row
-            # strict=False: a row with a missing or extra cell is paired as far as it goes
-            pairs = zip(headers, cells, strict=False)
-            lines.append("; ".join(f"{header}: {cell}" for header, cell in pairs) + ".")
-    return "\n".join(lines)
-
-
 def rerank(question, chunks, top_n=3):
     """Score each (question, chunk) pair with the cross-encoder and keep the best top_n."""
     if not chunks:
         return []
-    # The cross-encoder is trained on prose, so it sees tables as sentences.
-    # Only the scored text changes; the returned chunks keep their original text.
-    pairs = [(question, table_to_sentences(chunk["text"])) for chunk in chunks]
-    scores = reranker.predict(pairs)
+    # The cross-encoder reads question and chunk together; a higher score means more relevant
+    scores = reranker.predict([(question, chunk["text"]) for chunk in chunks])
     scored = [
         {**chunk, "rerank_score": float(score)} for chunk, score in zip(chunks, scores, strict=True)
     ]
