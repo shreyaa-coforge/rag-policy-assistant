@@ -1,4 +1,15 @@
+from pathlib import Path
+
 EXPECTED_KEYS = {"text", "doc_name", "section", "section_code", "chunk_id", "distance", "rank"}
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_tests_use_a_private_index_outside_the_project(retrieve_module):
+    # A shared ./chroma_db can be rebuilt by another process mid-run, so tests use their own
+    index_path = Path(retrieve_module.CHROMA_PATH)
+
+    assert index_path.is_absolute()
+    assert not index_path.is_relative_to(PROJECT_ROOT)
 
 
 def test_vector_search_returns_k_results_with_expected_keys(retrieve_module):

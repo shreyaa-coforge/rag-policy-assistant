@@ -1,9 +1,11 @@
+import os
+
 import chromadb
 from sentence_transformers import SentenceTransformer
 
 from chunker import MODEL_NAME, chunk_documents
 
-CHROMA_PATH = "./chroma_db"
+CHROMA_PATH = os.environ.get("CHROMA_PATH", "./chroma_db")  # Tests point this elsewhere
 COLLECTION_NAME = "policy_chunks"
 
 # Step 1: Split the policy documents into chunks

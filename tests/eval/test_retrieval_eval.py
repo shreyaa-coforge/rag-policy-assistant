@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
 
-EVAL_SET = json.loads((Path(__file__).parent / "eval_set.json").read_text(encoding="utf-8"))
+ALL_CASES = json.loads((Path(__file__).parent / "eval_set.json").read_text(encoding="utf-8"))
+# Out-of-scope questions have no expected section, so retrieval recall can't score them
+EVAL_SET = [case for case in ALL_CASES if case["type"] != "out_of_scope"]
 TYPES = sorted({case["type"] for case in EVAL_SET})
 
 

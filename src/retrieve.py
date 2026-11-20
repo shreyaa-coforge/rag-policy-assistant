@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 
@@ -7,7 +8,7 @@ from sentence_transformers import CrossEncoder, SentenceTransformer
 from chunker import MODEL_NAME
 
 RERANK_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-CHROMA_PATH = "./chroma_db"
+CHROMA_PATH = os.environ.get("CHROMA_PATH", "./chroma_db")  # Tests point this elsewhere
 COLLECTION_NAME = "policy_chunks"  # Must match the name used in index.py
 
 RRF_K = 60  # Standard constant in reciprocal rank fusion: score = 1 / (RRF_K + rank)
